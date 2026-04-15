@@ -1,0 +1,6 @@
+# Aiken compilation artifacts
+artifacts/
+# Aiken build working directory
+build/
+# Generated documentation
+docs/
