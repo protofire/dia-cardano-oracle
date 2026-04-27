@@ -52,6 +52,7 @@ import {
   findSingleUtxoAtUnit,
   splitUnit,
   updateWitnessData,
+  waitForUnitUtxoReplacement,
   writeJsonFile,
 } from "../core/chain-helpers.js";
 
@@ -353,17 +354,22 @@ export async function submitBatchOracleUpdate(args: {
     ]),
   );
 
-  const currentPairUtxos = await Promise.all(
+  const currentPairEntries = await Promise.all(
     preparedUpdates
       .filter(({ isCreate }) => !isCreate)
-      .map(({ artifact }) =>
-        findSingleUtxoAtUnit(
+      .map(async ({ artifact }) => ({
+        unit: artifact.pair.pairUnit,
+        utxo: await findSingleUtxoAtUnit(
           lucid,
           artifact.pair.pairValidatorAddress,
           artifact.pair.pairUnit,
           `pair ${artifact.pair.pairId}`,
         ),
-      ),
+      })),
+  );
+  const currentPairUtxos = currentPairEntries.map(({ utxo }) => utxo);
+  const currentPairUtxoByUnit = new Map(
+    currentPairEntries.map(({ unit, utxo }) => [unit, utxo]),
   );
 
   reportProgress("Building Preview oracle batch update transaction");
@@ -452,26 +458,39 @@ export async function submitBatchOracleUpdate(args: {
   }
 
   const latestPairUtxos =
-    args.buildOnly || !confirmed || !submittedTxHash
+    args.buildOnly || !confirmed
       ? preparedUpdates.map(({ artifact }) => artifact.pair.stateUtxo)
-      : preparedUpdates.map((_entry, index) => ({
-          txHash: submittedTxHash,
-          outputIndex: index,
-        }));
+      : await Promise.all(
+          preparedUpdates.map(({ artifact }) =>
+            waitForUnitUtxoReplacement({
+              lucid,
+              address: artifact.pair.pairValidatorAddress,
+              unit: artifact.pair.pairUnit,
+              label: `pair ${artifact.pair.pairId}`,
+              previousOutRef: currentPairUtxoByUnit.get(artifact.pair.pairUnit),
+            }),
+          ),
+        );
   const latestReceiverUtxo =
-    args.buildOnly || !confirmed || !submittedTxHash
+    args.buildOnly || !confirmed
       ? state.receiver.receiverUtxo.current
-      : {
-          txHash: submittedTxHash,
-          outputIndex: preparedUpdates.length,
-        };
+      : await waitForUnitUtxoReplacement({
+          lucid,
+          address: state.receiver.receiverValidatorAddress,
+          unit: state.receiver.receiverUnit,
+          label: "receiver",
+          previousOutRef: currentReceiverUtxo,
+        });
   const latestPaymentHookUtxo =
-    args.buildOnly || !confirmed || !submittedTxHash
+    args.buildOnly || !confirmed
       ? state.paymentHookUtxo.current
-      : {
-          txHash: submittedTxHash,
-          outputIndex: preparedUpdates.length + 1,
-        };
+      : await waitForUnitUtxoReplacement({
+          lucid,
+          address: state.scripts.paymentHookValidatorAddress!,
+          unit: state.scripts.paymentHookUnit!,
+          label: "payment hook",
+          previousOutRef: currentPaymentHookUtxo,
+        });
 
   const updatedArtifacts = preparedUpdates.map(({ entry, artifact, nextPairState }, index) => {
     const latestPairUtxo = latestPairUtxos[index]!;

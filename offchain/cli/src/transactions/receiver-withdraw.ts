@@ -24,6 +24,7 @@ import {
   findSingleUtxoAtUnit,
   splitUnit,
   toBigInt,
+  waitForUnitUtxoReplacement,
 } from "../core/chain-helpers.js";
 
 export async function receiverWithdraw(args: {
@@ -152,12 +153,13 @@ export async function receiverWithdraw(args: {
   const latestReceiverUtxo =
     args.buildOnly || !confirmed
       ? state.receiver.receiverUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.receiver.receiverValidatorAddress,
-          state.receiver.receiverUnit,
-          "receiver",
-        );
+          address: state.receiver.receiverValidatorAddress,
+          unit: state.receiver.receiverUnit,
+          label: "receiver",
+          previousOutRef: currentReceiverUtxo,
+        });
 
   return {
     ...state,

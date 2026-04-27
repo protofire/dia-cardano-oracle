@@ -20,6 +20,7 @@ import {
   findSingleUtxoAtUnit,
   splitUnit,
   toBigInt,
+  waitForUnitUtxoReplacement,
 } from "../core/chain-helpers.js";
 
 type ConfigUpdateInput = {
@@ -117,12 +118,13 @@ export async function configUpdate(args: {
   const latestConfigUtxo =
     args.buildOnly || !confirmed
       ? state.configUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.scripts.configValidatorAddress,
-          state.scripts.configUnit,
-          "config",
-        );
+          address: state.scripts.configValidatorAddress,
+          unit: state.scripts.configUnit,
+          label: "config",
+          previousOutRef: currentConfigUtxo,
+        });
 
   return {
     ...state,

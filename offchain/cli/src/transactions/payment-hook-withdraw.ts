@@ -23,6 +23,7 @@ import {
   findSingleUtxoAtUnit,
   splitUnit,
   toBigInt,
+  waitForUnitUtxoReplacement,
 } from "../core/chain-helpers.js";
 
 export async function paymentHookWithdraw(args: {
@@ -148,12 +149,13 @@ export async function paymentHookWithdraw(args: {
   const latestPaymentHookUtxo =
     args.buildOnly || !confirmed
       ? state.paymentHookUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.scripts.paymentHookValidatorAddress!,
-          state.scripts.paymentHookUnit!,
-          "payment hook",
-        );
+          address: state.scripts.paymentHookValidatorAddress!,
+          unit: state.scripts.paymentHookUnit!,
+          label: "payment hook",
+          previousOutRef: currentPaymentHookUtxo,
+        });
 
   return {
     ...state,

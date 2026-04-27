@@ -49,6 +49,7 @@ import {
   decodePaymentHookDatum,
   decodeReceiverDatum,
   waitForWalletSettlement,
+  waitForUnitUtxoReplacement,
 } from "../core/chain-helpers.js";
 
 export async function submitOracleUpdate(args: {
@@ -412,30 +413,33 @@ export async function submitOracleUpdate(args: {
   const latestPairUtxo =
     args.buildOnly || !confirmed
       ? state.pair.stateUtxo
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.pair.pairValidatorAddress,
-          state.pair.pairUnit,
-          "pair",
-        );
+          address: state.pair.pairValidatorAddress,
+          unit: state.pair.pairUnit,
+          label: "pair",
+          previousOutRef: currentPairUtxo ?? undefined,
+        });
   const latestPaymentHookUtxo =
     args.buildOnly || !confirmed
       ? state.paymentHookUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.scripts.paymentHookValidatorAddress!,
-          state.scripts.paymentHookUnit!,
-          "payment hook",
-        );
+          address: state.scripts.paymentHookValidatorAddress!,
+          unit: state.scripts.paymentHookUnit!,
+          label: "payment hook",
+          previousOutRef: currentPaymentHookUtxo,
+        });
   const latestReceiverUtxo =
     args.buildOnly || !confirmed
       ? state.receiver.receiverUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.receiver.receiverValidatorAddress,
-          state.receiver.receiverUnit,
-          "receiver",
-        );
+          address: state.receiver.receiverValidatorAddress,
+          unit: state.receiver.receiverUnit,
+          label: "receiver",
+          previousOutRef: currentReceiverUtxo,
+        });
 
   return {
     wallet: {

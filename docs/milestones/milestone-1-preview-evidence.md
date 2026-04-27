@@ -76,10 +76,50 @@ Network: Cardano Preview
 | Artifact | Final state |
 | --- | --- |
 | Config UTxO | `27fbf81d8b0039ff2eb88573bd67bdf377d083d68106b2c1adcd8754711f48c4#0` |
-| PaymentHook UTxO | `4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687#3`; accrued fees `6000000`, lifetime collected `8000000`, lifetime withdrawn `2000000` |
+| PaymentHook UTxO | `3e890f1272082c1150e73dfa0efe3ca3259671a1692e965a7fa43bf45ffeb70c#0`; accrued fees `6000000`, lifetime collected `8000000`, lifetime withdrawn `2000000` |
 | Receiver UTxO | `bea7199aee9ac51ecec68e65bd6df2eaaed69b1cd391814df53ee808bf06d0e7#0`; balance `1000000` |
 | USDC/USD Pair UTxO | `4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687#0`; price `100065678`, nonce `1777274633040` |
 | USDT/USD Pair UTxO | `4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687#1`; price `100001234`, nonce `1777274633040` |
+
+## Final Explorer Verification
+
+Preview explorer links use CExplorer's Preview instance:
+
+| Evidence | Explorer link | What to verify |
+| --- | --- | --- |
+| Config update | [27fbf81d8b0039ff2eb88573bd67bdf377d083d68106b2c1adcd8754711f48c4](https://preview.cexplorer.io/tx/27fbf81d8b0039ff2eb88573bd67bdf377d083d68106b2c1adcd8754711f48c4) | Output `#0` is the current Config UTxO at `addr_test1wpr526vu6lh7pwr3y5adu2rzjckyeaex0rjzhhxewgaelmsa96l3h`. |
+| Batch oracle update | [4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687](https://preview.cexplorer.io/tx/4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687) | Outputs `#0`, `#1`, and `#3` are the final USDC/USD Pair, USDT/USD Pair, and PaymentHook UTxOs. |
+| Receiver withdraw | [bea7199aee9ac51ecec68e65bd6df2eaaed69b1cd391814df53ee808bf06d0e7](https://preview.cexplorer.io/tx/bea7199aee9ac51ecec68e65bd6df2eaaed69b1cd391814df53ee808bf06d0e7) | Output `#0` is the final Receiver UTxO with remaining balance `1000000` lovelace in its inline datum. |
+| PaymentHook withdraw | [3e890f1272082c1150e73dfa0efe3ca3259671a1692e965a7fa43bf45ffeb70c](https://preview.cexplorer.io/tx/3e890f1272082c1150e73dfa0efe3ca3259671a1692e965a7fa43bf45ffeb70c) | Consumes the previous PaymentHook state from `4dc69409ce41b4a02cf8a7867e5891a6a5007a7ef213a435ea6bfa23b91bb687#3`, creates the final PaymentHook UTxO at output `#0`, and pays `2000000` lovelace to the configured withdraw address. |
+| Global reference scripts | [f82d630f914b5b069969010a9a5de7bec9cbee4f2accdc5c0009d45c02b07e92](https://preview.cexplorer.io/tx/f82d630f914b5b069969010a9a5de7bec9cbee4f2accdc5c0009d45c02b07e92) | Outputs `#0` and `#1` hold the Config and Coordinator reference scripts at the ReferenceHolder address. |
+| PaymentHook reference script | [855989fa8de4140c9307045dafeb245bb70f8ca74aac0e235d9ea5cb6fd3c7b1](https://preview.cexplorer.io/tx/855989fa8de4140c9307045dafeb245bb70f8ca74aac0e235d9ea5cb6fd3c7b1) | Output `#0` holds the PaymentHook reference script; output `#1` was later used only as the Receiver script parameterization UTxO. |
+| Client reference scripts | [5849abf24670559fe46a40453e779ce95e6adad5f8c8756b1026ecc4a777ec7d](https://preview.cexplorer.io/tx/5849abf24670559fe46a40453e779ce95e6adad5f8c8756b1026ecc4a777ec7d) | Outputs `#0` and `#1` hold the Receiver and Pair reference scripts at the ReferenceHolder address. |
+
+Expected final script and asset identities:
+
+| Item | Expected value |
+| --- | --- |
+| ReferenceHolder address | `addr_test1wzwyjd7eza9rrndl7hwkesadzpq7ajchxxd67mj4zrz80hcka7jtk` |
+| Config policy / validator hash | `4745699cd7efe0b871253ade2862962c4cf72678e42bdcd9723b9fee` |
+| Config NFT unit | `4745699cd7efe0b871253ade2862962c4cf72678e42bdcd9723b9fee4449415f434f4e464947` (`DIA_CONFIG`) |
+| Coordinator stake validator hash | `6a7c3bab2ce7b8e7a6271ae9488341c87726ccb608982f98d6540d57` |
+| PaymentHook policy / validator hash | `dd4596300d9f3118b48ec6d7a8e1571cbc693a9b5c04ec6bb7083301` |
+| PaymentHook NFT unit | `dd4596300d9f3118b48ec6d7a8e1571cbc693a9b5c04ec6bb70833014449415f5041594d454e545f484f4f4b` (`DIA_PAYMENT_HOOK`) |
+| Receiver policy / validator hash | `2946700041db0a710ced0da2ff7954f29550fc9ebc817557b68c9a1c` |
+| Receiver NFT unit | `2946700041db0a710ced0da2ff7954f29550fc9ebc817557b68c9a1c4449415f52454345495645525f434c49454e545f41` (`DIA_RECEIVER_CLIENT_A`) |
+| Pair policy / validator hash | `f07a8782f848ddd5902251ed731fc66a2c605fc8eb7f19d9a8955601` |
+| USDC/USD Pair NFT unit | `f07a8782f848ddd5902251ed731fc66a2c605fc8eb7f19d9a89556010156dbaa55902bb40ff6c461c8b2b59c70ebbe3786e51e5e75a8bc1cbad4c1ac` |
+| USDT/USD Pair NFT unit | `f07a8782f848ddd5902251ed731fc66a2c605fc8eb7f19d9a89556015ec9fa6a8337c83985882517e4865a68763912f37490cffe992a26abfd29d315` |
+
+Inline datum verification guide:
+
+| Datum | Fields expected in the final state |
+| --- | --- |
+| Config datum | Authorized Config signer `50186fd477be5e6bbcf42e0143bcf8d6612901d19c515f93f3f30d2d`; authorized DIA compressed public key `02d78ade9f8a9c064c8c588dba903df0cc0118596b9ec65f665dea1b448519f531`; EIP-712 domain `DIA Oracle`, version `1.0`, source chain `100640`, verifying contract `f8c614a483a0427a13512f52ac72a576678be317`; protocol fee `2000000`; PaymentHook NFT ref; Coordinator script credential. |
+| PaymentHook datum | Withdraw address `addr_test1qpgpsm75w7l9u6au7shqzsaulrtxz2gp6xw9zhun70es6tt4t3wsjavx26kmh586erf8xxhqc2y7urq5az32sjv56nyqquxj3j`; accrued fees `6000000`; lifetime collected `8000000`; lifetime withdrawn `2000000`; min UTxO `3000000`. |
+| Receiver datum | Client balance `1000000` lovelace after top-up, update fees, and withdraw; min UTxO `3000000`. |
+| USDC/USD Pair datum | Pair id `555344432f555344` (`USDC/USD`); price `100065678`; timestamp `1777274653`; nonce `1777274633040`; signer key hash `2b1c7eff297766569966b630a6862947a8e5285a`; intent hash `cfd4d7a1b5d316a2b6fddf383168d5c164445345ab13412997e8f2c925340bca`; min UTxO `5000000`. |
+| USDT/USD Pair datum | Pair id `555344542f555344` (`USDT/USD`); price `100001234`; timestamp `1777274653`; nonce `1777274633040`; signer key hash `2b1c7eff297766569966b630a6862947a8e5285a`; intent hash `e7692f59032293d3d37782acde24bc4ca223d2b11666e5b55bbbc4a0496d7f51`; min UTxO `5000000`. |
 
 ## Local State Artifacts
 

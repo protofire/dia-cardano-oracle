@@ -2,6 +2,7 @@
 .vscode
 .codex
 .mcp
+.playwright-mcp
 .windsurf
 
 # Local/archive notes are useful while working but are not part of the public docs.

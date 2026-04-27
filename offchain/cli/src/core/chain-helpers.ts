@@ -32,6 +32,42 @@ export async function findSingleUtxoAtUnit(
   throw new Error(`Unable to observe a single ${label} UTxO at ${address} with unit ${unit}.`);
 }
 
+export async function waitForUnitUtxoReplacement(args: {
+  lucid: Awaited<ReturnType<typeof makeConfiguredLucid>>;
+  address: string;
+  unit: string;
+  label: string;
+  previousOutRef?: OutRefLike;
+  maxAttempts?: number;
+  delayMs?: number;
+}): Promise<UTxO> {
+  const maxAttempts = args.maxAttempts ?? 20;
+  const delayMs = args.delayMs ?? 1_500;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const utxos = await args.lucid.utxosAtWithUnit(args.address, args.unit);
+    const replacement = utxos.find(
+      (utxo) =>
+        !args.previousOutRef ||
+        utxo.txHash !== args.previousOutRef.txHash ||
+        utxo.outputIndex !== args.previousOutRef.outputIndex,
+    );
+
+    if (utxos.length === 1 && replacement) {
+      return replacement;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  const previousSuffix = args.previousOutRef
+    ? ` after consuming ${args.previousOutRef.txHash}#${args.previousOutRef.outputIndex}`
+    : "";
+  throw new Error(
+    `Transaction confirmation was observed, but the ${args.label} UTxO set did not refresh${previousSuffix}.`,
+  );
+}
+
 export function splitUnit(
   unit: string,
 ): {

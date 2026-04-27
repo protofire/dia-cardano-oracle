@@ -22,6 +22,7 @@ import {
   findSingleUtxoAtUnit,
   splitUnit,
   toBigInt,
+  waitForUnitUtxoReplacement,
 } from "../core/chain-helpers.js";
 
 export async function receiverTopUp(args: {
@@ -120,12 +121,13 @@ export async function receiverTopUp(args: {
   const latestReceiverUtxo =
     args.buildOnly || !confirmed
       ? state.receiver.receiverUtxo.current
-      : await findSingleUtxoAtUnit(
+      : await waitForUnitUtxoReplacement({
           lucid,
-          state.receiver.receiverValidatorAddress,
-          state.receiver.receiverUnit,
-          "receiver",
-        );
+          address: state.receiver.receiverValidatorAddress,
+          unit: state.receiver.receiverUnit,
+          label: "receiver",
+          previousOutRef: currentReceiverUtxo,
+        });
 
   return {
     ...state,
