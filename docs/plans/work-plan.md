@@ -58,7 +58,7 @@ Tasks:
 - [x] Commands for Receiver top-up and Receiver withdraw (per client).
 - [x] Commands for batch update.
 - [x] Per-client state layout under `state/<network>/clients/<client>/`.
-- [x] Scripts to publish reusable reference-script UTxOs at the `reference_holder` address: 3 global and 2 per client.
+- [x] CLI commands to publish reusable reference-script UTxOs at the `reference_holder` address: 3 global and 2 per client.
 
 ## Workstream C — Data feeder (bridge)
 

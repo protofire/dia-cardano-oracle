@@ -4,6 +4,11 @@
 .mcp
 .windsurf
 
+# Local/archive notes are useful while working but are not part of the public docs.
+docs/_archived/
+docs/plans/archived/
+docs/plans/_archived/
+
 # Generated CLI state artifacts. Keep only the state directory placeholder/docs.
 offchain/cli/state/preview/**
 !offchain/cli/state/preview/

@@ -4,7 +4,7 @@ This document is the single architecture reference for the Cardano port of DIA's
 
 Reference inputs to this document:
 
-- [Cardano Integration Requirement [PF]](../../specs/requirements/cardano-integration-requirement-pf.md)
+- [Cardano Integration Requirement [PF]](../requirements/cardano-integration-requirement-pf.md)
 - [Final Cardano Milestones](../milestones/final-cardano-milestones.md)
 
 ---
@@ -67,7 +67,7 @@ Solid arrows are compile-time inputs that change the script hash. Dashed arrows 
 
 1. Initialize the client artifact from the live protocol artifact.
 2. Parameterize client Receiver scripts: select an existing wallet UTxO as `receiver_ref`, compile `receiver`, compile `pair_state`, and record the client's Receiver and Pair script metadata.
-3. Submit Receiver bootstrap: consume `receiver_ref`, mint the Receiver NFT, and create the Receiver UTxO with its initial balance.
+3. Submit Receiver bootstrap: consume `receiver_ref`, mint the Receiver NFT, and create the Receiver UTxO with `balance_lovelace = 0`.
 4. Publish client reference scripts: create ReferenceHolder UTxOs for this client's `receiver` spend and `pair_state` spend scripts.
 5. Top up the Receiver before live updates. The first update for each subscribed pair mints the Pair NFT and creates the Pair UTxO from the signed intent's real datum.
 
@@ -386,7 +386,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Admin([DIA Admin Wallet<br/>+ optional initial_balance]):::wallet
+  Admin([DIA Admin Wallet]):::wallet
   OneShot([One-shot UTxO<br/>receiver_ref]):::wallet
   ConfigRef[Config UTxO]:::script
   Policy[/receiver mint<br/>Bootstrap/]:::redeemer
@@ -396,7 +396,7 @@ flowchart LR
   ConfigRef -.-> TX
   Policy -.-> TX
 
-  TX -- mint +1 Receiver NFT --> ReceiverOut[Receiver UTxO<br/>value: minUTxO + initial_balance + Receiver NFT<br/>datum: balance_lovelace, min_utxo_lovelace]:::script
+  TX -- mint +1 Receiver NFT --> ReceiverOut[Receiver UTxO<br/>value: minUTxO + Receiver NFT<br/>datum: balance_lovelace = 0]:::script
   TX --> Change([Admin change]):::wallet
 
   classDef wallet fill:#fff8dc,stroke:#aa8800,color:#111
@@ -407,11 +407,11 @@ flowchart LR
 
 - **Frequency:** once per client.
 - **Inputs:**
-  - DIA admin wallet (pays network fee + min UTxO; may also include `initial_balance` if DIA pre-funds the client).
+  - DIA admin wallet (pays network fee + min UTxO).
   - The selected wallet bootstrap UTxO for this Receiver.
 - **Reference inputs:** Config UTxO (required to check the signer is in `config_admins`).
 - **Mint:** `+1` Receiver NFT (policy = `receiver` parametrized for this client).
-- **Outputs:** Receiver UTxO (address = `receiver<client>` spend, value = `min_utxo_lovelace + initial_balance` + Receiver NFT, datum = `{ balance_lovelace = initial_balance, min_utxo_lovelace }`).
+- **Outputs:** Receiver UTxO (address = `receiver<client>` spend, value = `min_utxo_lovelace` + Receiver NFT, datum = `{ balance_lovelace = 0, min_utxo_lovelace }`).
 - **Mint redeemer:** `Bootstrap`.
 - **Signers:** at least one `Config.config_admins` (DIA admin).
 - **Validates:**

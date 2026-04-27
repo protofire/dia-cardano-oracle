@@ -14,14 +14,14 @@ Network: Cardano Preview
 | --- | --- |
 | Aiken oracle smart contract ported to Cardano UTxO model | Complete |
 | Compiled contract | Complete: `contracts/aiken/plutus.json` |
-| Unit/integration test coverage | Complete for current repository scope: `aiken check` passes 23/23 tests; CLI tests pass |
+| Unit/integration test coverage | Complete for current repository scope: `aiken check` passes 24/24 tests; CLI tests pass |
 | Deployment scripts | Complete: `offchain/cli` runbook and CLI commands |
 | Documentation for Cardano developers | Complete in repository: root README, Aiken README, CLI runbook, architecture document |
 | Verified Cardano mainnet deployment and execution hashes | Pending: mainnet not executed yet |
 
 ## Current Verification
 
-- `aiken check`: 23/23 tests passed.
+- `aiken check`: 24/24 tests passed.
 - `npm run test`: passed in `offchain/cli`.
 - `npm run typecheck`: passed in `offchain/cli`.
 - `npm run build`: passed in `offchain/cli`.
@@ -39,7 +39,7 @@ Network: Cardano Preview
 | Protocol fee accounting | `fee_charge_transition_increments_balances`, `fee_charge_transition_rejects_wrong_fee_amount`, update, batch update, and PaymentHook withdraw CLI commands |
 | Receiver balance accounting | `pay_fee_transition_decrements_balance`, `pay_fee_transition_rejects_wrong_fee_amount`, `pay_fee_transition_rejects_balance_underflow`, update, batch update, Receiver top-up, and Receiver withdraw CLI commands |
 | PaymentHook withdrawal accounting | `withdraw_transition_decrements_accrued_balance`, `withdraw_transition_rejects_above_accrued_fees`, PaymentHook withdraw CLI command |
-| Protocol and client deployment flow | CLI runbook steps 6-28: initialize protocol/client artifacts, parameterize with existing wallet UTxOs, bootstrap Config, PaymentHook, Receiver, and Pair, publish reference scripts at ReferenceHolder, create and sign intents, generate Config-update and batch payloads, and submit maintenance transactions |
+| Protocol and client deployment flow | CLI runbook steps 6-27: initialize protocol/client artifacts, parameterize with existing wallet UTxOs, bootstrap Config, PaymentHook, and Receiver, publish reference scripts at ReferenceHolder, top up the Receiver, create and sign intents, create/update pairs through real oracle updates, generate Config-update and batch payloads, and submit maintenance transactions |
 | CLI signer, intent, generated payload, and state artifact checks | `npm run test` in `offchain/cli` |
 | Developer documentation | `README.md`, `contracts/aiken/README.md`, `offchain/cli/README.md`, `docs/architecture/cardano-oracle-architecture.md` |
 | Mainnet deployment hashes | Pending |
@@ -62,15 +62,14 @@ Network: Cardano Preview
 | 17 | Create unsigned intent | N/A: local prompt workflow |
 | 18 | Sign unsigned intent | N/A: local prompt workflow |
 | 19 | Create and sign intent | N/A: local prompt workflow |
-| 20 | Bootstrap Pair | Pending Preview re-run |
-| 21 | Oracle update | Pending Preview re-run |
+| 20 | First oracle update/create pair | Pending Preview re-run |
+| 21 | Subsequent oracle update | Pending Preview re-run |
 | 22 | Create Config update draft | N/A: local prompt workflow |
 | 23 | Config update | Pending Preview re-run |
 | 24 | Create batch manifest | N/A: local prompt workflow |
-| 25 | Batch oracle update | Pending Preview re-run |
-| 26 | Receiver top-up | Pending Preview re-run |
-| 27 | Receiver withdraw | Pending Preview re-run |
-| 28 | PaymentHook withdraw | Pending Preview re-run |
+| 25 | Batch oracle update/create pairs | Pending Preview re-run |
+| 26 | Receiver withdraw | Pending Preview re-run |
+| 27 | PaymentHook withdraw | Pending Preview re-run |
 
 ## Local State Artifacts
 
