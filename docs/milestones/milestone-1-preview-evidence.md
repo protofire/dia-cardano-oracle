@@ -27,6 +27,24 @@ Network: Cardano Preview
 - `npm run build`: passed in `offchain/cli`.
 - Preview CLI flow regenerated end-to-end on 2026-04-27 using the clarified init + parameterize + bootstrap + reference-script + update flow.
 
+## Reproducible Local Test Evidence
+
+The local verification logs are committed under [`docs/milestones/evidence/m1-preview-20260427/`](./evidence/m1-preview-20260427/). Each command was run on 2026-04-27 and exited with status `0`.
+
+| Area | Working directory | Command | Captured output |
+| --- | --- | --- | --- |
+| Aiken contracts | `contracts/aiken` | `aiken check` | [`aiken-check.log`](./evidence/m1-preview-20260427/aiken-check.log) |
+| CLI tests | `offchain/cli` | `npm run test` | [`npm-test.log`](./evidence/m1-preview-20260427/npm-test.log) |
+| CLI typecheck | `offchain/cli` | `npm run typecheck` | [`npm-typecheck.log`](./evidence/m1-preview-20260427/npm-typecheck.log) |
+| CLI build | `offchain/cli` | `npm run build` | [`npm-build.log`](./evidence/m1-preview-20260427/npm-build.log) |
+
+Summary from the captured logs:
+
+- `aiken check` collected 24 Aiken unit tests and passed 24/24.
+- `npm run test` printed `CLI tests passed`.
+- `npm run typecheck` completed TypeScript checking with exit code `0`.
+- `npm run build` completed TypeScript compilation with exit code `0`.
+
 ## Milestone 1 Coverage
 
 | Official requirement | Evidence |

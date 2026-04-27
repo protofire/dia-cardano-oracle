@@ -90,7 +90,7 @@ Tasks:
 
 Tasks:
 
-- [ ] Preview execution evidence regenerated with the clarified init + parameterize + bootstrap + reference-script deployment flow.
+- [x] Preview execution evidence regenerated with the clarified init + parameterize + bootstrap + reference-script deployment flow.
 - [ ] Mainnet deployment scripts and evidence (contract addresses, reference-script UTxOs, verified mainnet tx hashes).
 - [x] Operator runbook (onboarding a new client, subscribing a new pair, rotating signers, withdrawing accrued fees).
 - [ ] Developer documentation published via DIA's developer documentation website, covering:
