@@ -370,36 +370,13 @@ back to any public DIA source.** The address
 the testnet RPC and is currently emitting `IntentRegistered` events. We
 verified in step 9 below that calling `getIntent(bytes32)` on it returns
 fully decoded `OracleIntent` structs, so it implements the same interface
-DIA documents. However, no public DIA source identifies this address:
-
-- A GitHub code search across all public repositories returns no hits. The
-  address does not appear in
-  [`diadata-org/Spectra-interoperability`](https://github.com/diadata-org/Spectra-interoperability)
-  on any of its branches (`main`, `logging`, `auditfix`, `auditfix-bridge`,
-  `deploy`, `intentbased`, `metrics`, `mixbytes-fix`, `optimizeworkerpool`),
-  nor in any of the other 37 repositories in the `diadata-org` organization.
-- It does not appear in the four Solidity reference files DIA cites in the
-  [Cardano Integration Requirement](../requirements/cardano-integration-requirement-pf.md)
-  (`PushOracleReceiverV2.sol`, `ProtocolFeeHook.sol`, `OracleIntentRegistry.sol`,
-  `OracleIntentUtils.sol` on the `logging` branch).
-- It does not appear on the
-  [DIA Spectra documentation page](https://www.diadata.org/docs/dia-stack/architecture/core-components/spectra)
-  or in the Google Docs DIA shared as input
-  (Final Milestones, Cardano Integration Requirement, Technical
-  Specification, Presentation), per a manual inspection of those documents.
-- The example transaction the requirement document offers as a reference
-  for retrieving an intent
-  (`0x82af92bdfb51bc1049cf832b1d85f219b033aea6c1cc38cd1857872c0a3cea55`,
-  via `testnet-explorer.diadata.org/tx/...`) is no longer available: both
-  the testnet RPC and the testnet explorer return "not found" for that
-  hash. The historical chain that produced the example appears to have
-  been retired.
-
-The address must therefore have been provided to the team through a
-private channel (chat, email, or meeting) before the live contract was
-later deployed. We do not have any written reference linking this address
-to a DIA-published source, and DIA needs to confirm both its provenance
-and its current authoritative status.
+DIA documents. The example transaction the requirement document itself
+offers as the reference for retrieving an intent
+(`0x82af92bdfb51bc1049cf832b1d85f219b033aea6c1cc38cd1857872c0a3cea55`, via
+`testnet-explorer.diadata.org/tx/...`) is also no longer available: both
+the testnet RPC and the testnet explorer return "not found" for that hash.
+DIA needs to confirm whether this address is the current
+`OracleIntentRegistry` and document it somewhere public.
 
 **The chain id reported by the live RPC differs from what DIA's own
 configuration files state.** DIA's `config.json`, integration test, and
