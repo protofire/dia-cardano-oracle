@@ -7,6 +7,7 @@ Single work plan for the Cardano port of DIA's push-oracle contracts.
 - [Cardano Oracle Architecture](../../docs/architecture/cardano-oracle-architecture.md) — single architecture reference.
 - [Cardano Integration Requirement [PF]](../requirements/cardano-integration-requirement-pf.md) — DIA requirement document.
 - [Final Cardano Milestones](../../docs/milestones/final-cardano-milestones.md) — Catalyst milestone text.
+- [PaymentHook Contention: Design Options](./payment-hook-contention-options.md) — open Milestone 1 design decision: how to remove the global PaymentHook UTxO bottleneck before mainnet deployment.
 - [Milestone 2 Feeder Strategy](./milestone-2-feeder-strategy.md) — recommended feeder split, DIA stack glossary, and M2 implementation direction.
 
 ## Scope
