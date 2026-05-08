@@ -39,7 +39,7 @@ Target contract set, per the architecture:
 Tasks:
 
 - [x] Implement the oracle scripts in Aiken.
-- [x] Implement `reference_holder` for reusable reference-script UTxOs.
+- [x] Implement `reference_holder` for reusable reference-script UTxOs — parameterized with config policy, admin-gated spend so DIA can reclaim ADA when upgrading contracts.
 - [x] Implement datum types and redeemers per the architecture (`Config`, `PaymentHook`, `Receiver`, `Pair`).
 - [x] Implement `secp256k1` ECDSA + EIP-712 intent verification against the authorized DIA signer set.
 - [x] Implement continuity rules for Config, Hook, Receiver and Pair UTxOs, including `min_utxo_lovelace` invariants.
@@ -62,7 +62,7 @@ Tasks:
 - [x] Commands for Receiver top-up and Receiver withdraw (per client).
 - [x] Commands for batch update.
 - [x] Per-client state layout under `state/<network>/clients/<client>/`.
-- [x] CLI commands to publish reusable reference-script UTxOs at the `reference_holder` address: 3 global and 2 per client.
+- [x] CLI commands to publish reusable reference-script UTxOs at the `reference_holder` address: 3 global and 3 per client.
 
 ## Workstream C — Data feeder (bridge)
 
