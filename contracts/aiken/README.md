@@ -43,6 +43,21 @@ contend on the single global PaymentHook UTxO. The `Withdraw` redeemer
 on the Receiver explicitly cannot drain `accrued_to_hook_lovelace` —
 the only path from a Receiver to the PaymentHook is through Settle.
 
+## Batch update validation strategy
+
+The `ApplyBatch` branch of `update_coordinator` validates an N-pair batch with a single linear pass over each relevant list — no per-witness scans of `tx.inputs` or `tx.outputs`. The off-chain builder and on-chain validator agree on a canonical witness order (strict ascending by `pair_token_name`) and the builder emits the pair outputs in that same order. With that alignment in place, the coordinator:
+
+1. Runs one `list.filter` over `tx.outputs` to extract pair outputs (already canonical, since the ledger preserves the builder's output order).
+2. Runs one `list.filter` over `tx.inputs` to extract pair inputs (in ledger-imposed `OutputReference` order — `tx.inputs` is reordered by the ledger before reaching scripts).
+3. Walks the witness list and the canonical pair-output list in lockstep. Each witness's pair input (if any) is looked up by `pair_token_name` against the short filtered pair-input list.
+4. Closes with three global equalities that pin pair-output count, pair-input count, and minted-Pair-NFT count against the witness count and the create count.
+
+The heavy `assets.tokens` invocation is paid exactly once per `tx.inputs`/`tx.outputs` entry, not once per witness.
+
+`pair_state.spend.ApplyUpdate` is intentionally minimal: NFT continuity, exact ADA locking (using `current_datum.min_utxo_lovelace`, since the coordinator enforces `previous.min_utxo == next.min_utxo` for updates), and a `coordinator_in_update_mode` check that decodes ONLY the outer `CoordinatorRedeemer` constructor tag through a `CoordinatorRedeemerFingerprint` type (`Data` payload, no recursive decoding). The script no longer decodes the continuation output's `next_datum` or the coordinator's full witness list. Receiver presence, intent expiry, datum continuity, signature recovery, freshness, and one-pair-input-per-witness accounting are all enforced once by `update_coordinator` in the same transaction — duplicating them inside `pair_state.spend` would multiply that cost by N pair-script executions in a batch. Pair mint remains identity-bound through `pair_mint_intent_satisfied`, since one mint redeemer can cover multiple newly minted Pair NFTs and the mint path is run at most once per batch.
+
+This combination is what lets `batch-10` fit on the current bytecode. Latest emulator evidence: `batch-10 ok cpu=4,295,001,740 mem=10,810,449` (memory at 67.6% of the per-tx limit). See `valid_batch_update`, `coordinator_in_update_mode`, and `pair_mint_intent_satisfied` in `validators/update_coordinator.ak` / `lib/dia_cardano_oracle/coordinator_logic.ak`, and the in-depth treatment in `docs/architecture/cardano-oracle-architecture.md` §5.9.
+
 ## Admin-only maintenance operations
 
 ### Updating minimum UTxO lovelace

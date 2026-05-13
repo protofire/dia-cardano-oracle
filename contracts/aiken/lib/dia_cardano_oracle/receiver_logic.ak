@@ -76,10 +76,7 @@ pub fn accrue_fee_transition(
 /// input and output (the diff equals `previous.accrued_to_hook_lovelace`).
 /// `previous.accrued_to_hook_lovelace > 0` rejects no-op settlements,
 /// which would otherwise let any party churn an idle receiver.
-pub fn settle_transition(
-  previous: ReceiverDatum,
-  next: ReceiverDatum,
-) -> Bool {
+pub fn settle_transition(previous: ReceiverDatum, next: ReceiverDatum) -> Bool {
   and {
     previous.accrued_to_hook_lovelace > 0,
     next.accrued_to_hook_lovelace == 0,
@@ -224,7 +221,10 @@ test exact_locked_lovelace_rejects_missing_accrued() {
 test top_up_transition_accepts_strictly_positive_addition() {
   let previous = sample_receiver()
   let next =
-    ReceiverDatum { ..previous, balance_lovelace: previous.balance_lovelace + 1_000_000 }
+    ReceiverDatum {
+      ..previous,
+      balance_lovelace: previous.balance_lovelace + 1_000_000,
+    }
 
   top_up_transition(
     sample_output_for(previous),
@@ -352,7 +352,10 @@ test settle_transition_rejects_partial_drain() {
 test withdraw_transition_decrements_balance() {
   let previous = sample_receiver()
   let next =
-    ReceiverDatum { ..previous, balance_lovelace: previous.balance_lovelace - 3_000_000 }
+    ReceiverDatum {
+      ..previous,
+      balance_lovelace: previous.balance_lovelace - 3_000_000,
+    }
 
   withdraw_transition(previous, next, 3_000_000)
 }
@@ -389,8 +392,7 @@ test withdraw_transition_rejects_accrued_drain() {
 
 test update_min_utxo_transition_accepts_valid_update() {
   let previous = sample_receiver()
-  let next =
-    ReceiverDatum { ..previous, min_utxo_lovelace: 3_000_000 }
+  let next = ReceiverDatum { ..previous, min_utxo_lovelace: 3_000_000 }
 
   update_min_utxo_transition(previous, next, 3_000_000)
 }

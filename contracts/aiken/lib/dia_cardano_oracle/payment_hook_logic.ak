@@ -116,11 +116,7 @@ test apply_settle_transition_increments_balances() {
 
 test apply_settle_transition_rejects_zero_delta() {
   // No-op settles must be rejected so attackers cannot churn the hook.
-  !apply_settle_transition(
-    sample_payment_hook(),
-    sample_payment_hook(),
-    0,
-  )
+  !apply_settle_transition(sample_payment_hook(), sample_payment_hook(), 0)
 }
 
 test apply_settle_transition_rejects_lifetime_collected_mismatch() {

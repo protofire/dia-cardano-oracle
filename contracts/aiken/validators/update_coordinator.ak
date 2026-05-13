@@ -1,8 +1,9 @@
 use aiken/collection/dict
 use aiken/collection/list
+use aiken/interval
 use aiken/primitive/bytearray
 use cardano/address.{Credential, Script}
-use cardano/assets.{AssetName, PolicyId}
+use cardano/assets.{AssetName, PolicyId, Value}
 use cardano/transaction.{InlineDatum, Input, Output, Transaction}
 use dia_cardano_oracle/config_logic
 use dia_cardano_oracle/coordinator_logic.{
@@ -54,19 +55,15 @@ validator update_coordinator(
           }
 
         ApplyBatch(witnesses) -> and {
-            witnesses_share_receiver(witnesses),
-            list.all(
-              witnesses,
-              fn(witness) {
-                oracle_logic.intent_expiry_satisfied(witness.intent, self)
-              },
-            ),
             valid_batch_update(self, config_datum, witnesses),
             valid_batch_receiver_accrue_fee(
               self,
               witnesses,
               // Batch: fee = base + N*k (charged to the single receiver)
-              config_logic.calculate_protocol_fee(config_datum, list.length(witnesses)),
+              config_logic.calculate_protocol_fee(
+                config_datum,
+                list.length(witnesses),
+              ),
             ),
           }
 
@@ -207,11 +204,7 @@ fn valid_settle(
       next_hook,
       expected_delta,
     ),
-    sum_receiver_accrued_equals_delta(
-      self,
-      manifest.receivers,
-      expected_delta,
-    ),
+    sum_receiver_accrued_equals_delta(self, manifest.receivers, expected_delta),
   }
 }
 
@@ -224,9 +217,7 @@ fn sum_receiver_accrued_equals_delta(
     list.foldl(
       receivers,
       0,
-      fn(receiver, acc) {
-        acc + get_receiver_accrued_drained(self, receiver)
-      },
+      fn(receiver, acc) { acc + get_receiver_accrued_drained(self, receiver) },
     )
   total_accrued == expected_delta
 }
@@ -265,18 +256,18 @@ fn get_receiver_accrued_drained(
   expect next_receiver: receiver_logic.ReceiverDatum = receiver_output_datum
 
   expect and {
-    receiver_logic.valid_receiver_state(previous_receiver),
-    receiver_logic.valid_receiver_state(next_receiver),
-    receiver_logic.exact_locked_lovelace(
-      receiver_input.output,
-      previous_receiver,
-    ),
-    receiver_logic.exact_locked_lovelace(receiver_output, next_receiver),
-    receiver_logic.settle_transition(previous_receiver, next_receiver),
-    receiver_output.address.payment_credential == Script(
-      receiver.receiver_policy_id,
-    ),
-  }
+      receiver_logic.valid_receiver_state(previous_receiver),
+      receiver_logic.valid_receiver_state(next_receiver),
+      receiver_logic.exact_locked_lovelace(
+        receiver_input.output,
+        previous_receiver,
+      ),
+      receiver_logic.exact_locked_lovelace(receiver_output, next_receiver),
+      receiver_logic.settle_transition(previous_receiver, next_receiver),
+      receiver_output.address.payment_credential == Script(
+        receiver.receiver_policy_id,
+      ),
+    }
 
   previous_receiver.accrued_to_hook_lovelace
 }
@@ -310,7 +301,11 @@ fn valid_single_update(
     find_unique_pair_input(self.inputs, pair_policy_id, witness.pair_token_name)
 
   expect Some(pair_output) =
-    find_unique_pair_output(self.outputs, pair_policy_id, witness.pair_token_name)
+    find_unique_pair_output(
+      self.outputs,
+      pair_policy_id,
+      witness.pair_token_name,
+    )
 
   expect InlineDatum(output_datum_data) = pair_output.datum
   expect next_pair: oracle_logic.PairDatum = output_datum_data
@@ -352,78 +347,269 @@ fn valid_single_update(
   }
 }
 
+// Batch update validation.
+//
+// The off-chain coordinator binds three lists to the same canonical
+// witness order before submission:
+//   - `witnesses` — sorted strict-ascending by `pair_token_name`; this
+//     is now proven inside the main witness walk, together with receiver
+//     sharing and intent expiry.
+//   - pair outputs in `tx.outputs` — the builder emits them in the same
+//     witness order; the ledger preserves the output order it received,
+//     so after a single filter pass the resulting list is already
+//     canonical.
+//   - pair inputs in `tx.inputs` — the ledger reorders inputs
+//     lexicographically by `OutputReference` (a property of Plutus V3 /
+//     CIP-0128 not-yet-active), independent of `pair_token_name`. So
+//     after filtering, the pair-input list is in arbitrary order from a
+//     token-name perspective. We look up each witness's input by
+//     `pair_token_name` against the short filtered list (length ≤ N).
+//
+// Cost model:
+//   - Previously: every witness called `find_unique_pair_input` /
+//     `find_unique_pair_output`, each of which scanned the FULL
+//     `tx.inputs` / `tx.outputs` list and invoked `assets.quantity_of`
+//     per item — i.e. N × M assets-lookups for N witnesses and M tx
+//     inputs/outputs (plus a second N × M pass for the create count).
+//   - Now: one linear filter pass over `tx.inputs` and one over
+//     `tx.outputs`, each invoking the assets check exactly once per
+//     item. Per-witness work is reduced to a positional output access
+//     (canonical alignment) and a token-name lookup against the
+//     pair-only short list (length K ≤ N). Total assets-lookup count:
+//     M_in + M_out (down from 2 × N × M).
+//
+// Safety invariants preserved unchanged:
+//   - `length(pair_outputs) == length(witnesses)` rejects spurious /
+//     duplicate pair outputs.
+//   - `length(witnesses) - create_count == length(pair_inputs)` rejects
+//     spurious pair inputs and pair-input duplicates (a duplicate
+//     token-name would yield a second entry that no witness consumes,
+//     breaking the count).
+//   - `minted_pair_token_count == create_count` rejects extra Pair NFT
+//     mints unaccounted for by witnesses.
+//   - Per-witness checks (mint quantity, payment credential, locked
+//     lovelace, intent/datum continuity, signature recovery, freshness)
+//     are unchanged.
 fn valid_batch_update(
   self: Transaction,
   config_datum: config_logic.ConfigDatum,
   witnesses: List<oracle_logic.UpdateWitness>,
 ) -> Bool {
   let domain_sep = oracle_logic.domain_separator(config_datum.domain_data)
+  expect [first_witness, ..] = witnesses
+  let pair_policy_id = first_witness.pair_policy_id
+  let receiver_policy_id = first_witness.receiver_policy_id
+  let receiver_asset_name = first_witness.receiver_asset_name
+
+  let pair_outputs = collect_pair_outputs(self.outputs, pair_policy_id)
+  let pair_inputs = collect_pair_inputs(self.inputs, pair_policy_id)
+
+  let (witnesses_valid, create_count) =
+    walk_batch_witnesses(
+      self,
+      config_datum,
+      domain_sep,
+      pair_policy_id,
+      receiver_policy_id,
+      receiver_asset_name,
+      witnesses,
+      pair_outputs,
+      pair_inputs,
+      None,
+      True,
+      0,
+    )
 
   and {
-    list.length(witnesses) > 0,
-    witnesses_sorted_unique_same_policy(witnesses),
-    minted_pair_token_count(self, first_pair_policy_id(witnesses)) == create_witness_count(
-      self,
-      witnesses,
-    ),
-    list.all(
-      witnesses,
-      fn(witness) {
-        let pair_policy_id = witness.pair_policy_id
-        let pair_input =
-          find_unique_pair_input(
-            self.inputs,
-            pair_policy_id,
-            witness.pair_token_name,
-          )
+    list.length(pair_outputs) == list.length(witnesses),
+    list.length(witnesses) - create_count == list.length(pair_inputs),
+    minted_pair_token_count(self, pair_policy_id) == create_count,
+    witnesses_valid,
+  }
+}
 
-        expect Some(pair_output) =
-          find_unique_pair_output(
-            self.outputs,
-            pair_policy_id,
-            witness.pair_token_name,
-          )
+// Recursive walk over witnesses + canonical pair outputs in lockstep.
+// For each witness, the corresponding pair output is taken positionally
+// from the head of `pair_outputs`, and the matching pair input (if any)
+// is looked up by token-name in `pair_inputs`. The same pass also
+// validates shared receiver, shared pair policy, strict canonical order,
+// and intent expiry. Accumulates `(valid, create_count)`.
+fn walk_batch_witnesses(
+  self: Transaction,
+  config_datum: config_logic.ConfigDatum,
+  domain_sep: ByteArray,
+  pair_policy_id: PolicyId,
+  receiver_policy_id: PolicyId,
+  receiver_asset_name: AssetName,
+  witnesses: List<oracle_logic.UpdateWitness>,
+  pair_outputs: List<(ByteArray, Output)>,
+  pair_inputs: List<(ByteArray, Input)>,
+  previous_pair_token_name: Option<ByteArray>,
+  acc_valid: Bool,
+  acc_create_count: Int,
+) -> (Bool, Int) {
+  when witnesses is {
+    [] -> (acc_valid, acc_create_count)
+    [witness, ..rest_witnesses] -> {
+      expect [(out_name, pair_output), ..rest_outputs] = pair_outputs
 
-        expect InlineDatum(output_datum_data) = pair_output.datum
-        expect next_pair: oracle_logic.PairDatum = output_datum_data
+      expect InlineDatum(output_datum_data) = pair_output.datum
+      expect next_pair: oracle_logic.PairDatum = output_datum_data
 
-        when pair_input is {
-          None -> and {
-              minted_pair_quantity(
-                self,
-                pair_policy_id,
-                witness.pair_token_name,
-              ) == 1,
-              pair_output.address.payment_credential == Script(pair_policy_id),
-              oracle_logic.exact_locked_lovelace(pair_output, next_pair),
-              oracle_logic.initial_pair_matches_witness(
+      let token_alignment_ok = out_name == witness.pair_token_name
+      let witness_header_ok =
+        batch_witness_header_ok(
+          self,
+          pair_policy_id,
+          receiver_policy_id,
+          receiver_asset_name,
+          previous_pair_token_name,
+          witness,
+        )
+
+      let matching_input =
+        list.find(
+          pair_inputs,
+          fn(entry) {
+            let (name, _) = entry
+            name == witness.pair_token_name
+          },
+        )
+
+      let (valid_this, is_create) =
+        when matching_input is {
+          None -> (and {
+                minted_pair_quantity(
+                  self,
+                  pair_policy_id,
+                  witness.pair_token_name,
+                ) == 1,
+                pair_output.address.payment_credential == Script(pair_policy_id),
+                oracle_logic.exact_locked_lovelace(pair_output, next_pair),
+                oracle_logic.initial_pair_matches_witness(
+                  next_pair,
+                  config_datum,
+                  domain_sep,
+                  witness,
+                ),
+                oracle_logic.intent_freshness_satisfied(
+                  witness.intent,
+                  self,
+                  config_datum.max_bootstrap_drift_seconds,
+                ),
+              }, 1)
+
+          Some((_, pair_input)) -> {
+            expect InlineDatum(input_datum_data) = pair_input.output.datum
+            expect previous_pair: oracle_logic.PairDatum = input_datum_data
+
+            (
+              oracle_logic.next_pair_matches_witness(
+                previous_pair,
                 next_pair,
                 config_datum,
                 domain_sep,
                 witness,
               ),
-              oracle_logic.intent_freshness_satisfied(
-                witness.intent,
-                self,
-                config_datum.max_bootstrap_drift_seconds,
-              ),
-            }
-
-          Some(pair_input) -> {
-            expect InlineDatum(input_datum_data) = pair_input.output.datum
-            expect previous_pair: oracle_logic.PairDatum = input_datum_data
-
-            oracle_logic.next_pair_matches_witness(
-              previous_pair,
-              next_pair,
-              config_datum,
-              domain_sep,
-              witness,
+              0,
             )
           }
         }
-      },
-    ),
+
+      walk_batch_witnesses(
+        self,
+        config_datum,
+        domain_sep,
+        pair_policy_id,
+        receiver_policy_id,
+        receiver_asset_name,
+        rest_witnesses,
+        rest_outputs,
+        pair_inputs,
+        Some(witness.pair_token_name),
+        acc_valid && witness_header_ok && token_alignment_ok && valid_this,
+        acc_create_count + is_create,
+      )
+    }
+  }
+}
+
+fn batch_witness_header_ok(
+  self: Transaction,
+  pair_policy_id: PolicyId,
+  receiver_policy_id: PolicyId,
+  receiver_asset_name: AssetName,
+  previous_pair_token_name: Option<ByteArray>,
+  witness: oracle_logic.UpdateWitness,
+) -> Bool {
+  let order_ok =
+    when previous_pair_token_name is {
+      None -> True
+      Some(previous) ->
+        bytearray.compare(previous, witness.pair_token_name) == Less
+    }
+
+  and {
+    witness.pair_policy_id == pair_policy_id,
+    witness.receiver_policy_id == receiver_policy_id,
+    witness.receiver_asset_name == receiver_asset_name,
+    oracle_logic.intent_expiry_satisfied(witness.intent, self),
+    order_ok,
+  }
+}
+
+// Single linear pass over `tx.outputs`. Keeps only outputs that carry
+// exactly one token of the shared pair policy, preserving their order
+// in `tx.outputs`. Off-chain builders emit pair outputs in canonical
+// witness order, so the result is already in canonical order and can
+// be walked positionally alongside the sorted witness list.
+fn collect_pair_outputs(
+  outputs: List<Output>,
+  pair_policy_id: PolicyId,
+) -> List<(ByteArray, Output)> {
+  list.foldr(
+    outputs,
+    [],
+    fn(output, acc) {
+      when single_pair_token_name(output.value, pair_policy_id) is {
+        Some(name) -> [(name, output), ..acc]
+        None -> acc
+      }
+    },
+  )
+}
+
+// Single linear pass over `tx.inputs`. Keeps only inputs that carry
+// exactly one token of the shared pair policy. The order here is
+// whatever the ledger provided (lexicographic by `OutputReference`),
+// unrelated to `pair_token_name`, so callers must look up entries by
+// token-name rather than rely on positional alignment with witnesses.
+fn collect_pair_inputs(
+  inputs: List<Input>,
+  pair_policy_id: PolicyId,
+) -> List<(ByteArray, Input)> {
+  list.foldr(
+    inputs,
+    [],
+    fn(input, acc) {
+      when single_pair_token_name(input.output.value, pair_policy_id) is {
+        Some(name) -> [(name, input), ..acc]
+        None -> acc
+      }
+    },
+  )
+}
+
+// Returns `Some(token_name)` if and only if `value` carries exactly
+// one token of `policy_id` with quantity 1 (i.e. a single Pair NFT).
+// Returns `None` for zero tokens or any malformed multi-token bag.
+fn single_pair_token_name(
+  value: Value,
+  policy_id: PolicyId,
+) -> Option<ByteArray> {
+  when value |> assets.tokens(policy_id) |> dict.to_pairs() is {
+    [Pair(name, 1)] -> Some(name)
+    _ -> None
   }
 }
 
@@ -440,28 +626,6 @@ fn minted_pair_token_count(self: Transaction, pair_policy_id: PolicyId) -> Int {
     |> assets.tokens(pair_policy_id)
     |> dict.to_pairs()
     |> list.length
-}
-
-fn create_witness_count(
-  self: Transaction,
-  witnesses: List<oracle_logic.UpdateWitness>,
-) -> Int {
-  witnesses
-    |> list.filter(
-        fn(witness) {
-          find_unique_pair_input(
-            self.inputs,
-            witness.pair_policy_id,
-            witness.pair_token_name,
-          ) == None
-        },
-      )
-    |> list.length
-}
-
-fn first_pair_policy_id(witnesses: List<oracle_logic.UpdateWitness>) -> PolicyId {
-  expect [head, ..] = witnesses
-  head.pair_policy_id
 }
 
 fn find_unique_pair_input(
@@ -483,7 +647,13 @@ fn find_unique_pair_input_go(
     [head, ..tail] ->
       if assets.quantity_of(head.output.value, pair_policy_id, pair_token_name) == 1 {
         when found is {
-          None -> find_unique_pair_input_go(tail, pair_policy_id, pair_token_name, Some(head))
+          None ->
+            find_unique_pair_input_go(
+              tail,
+              pair_policy_id,
+              pair_token_name,
+              Some(head),
+            )
           Some(_) -> None
         }
       } else {
@@ -511,7 +681,13 @@ fn find_unique_pair_output_go(
     [head, ..tail] ->
       if assets.quantity_of(head.value, pair_policy_id, pair_token_name) == 1 {
         when found is {
-          None -> find_unique_pair_output_go(tail, pair_policy_id, pair_token_name, Some(head))
+          None ->
+            find_unique_pair_output_go(
+              tail,
+              pair_policy_id,
+              pair_token_name,
+              Some(head),
+            )
           Some(_) -> None
         }
       } else {
@@ -520,37 +696,10 @@ fn find_unique_pair_output_go(
   }
 }
 
-fn witnesses_sorted_unique_same_policy(
-  witnesses: List<oracle_logic.UpdateWitness>,
-) -> Bool {
-  when witnesses is {
-    [] | [_] -> True
-    [a, b, ..rest] -> and {
-        a.pair_policy_id == b.pair_policy_id,
-        bytearray.compare(a.pair_token_name, b.pair_token_name) == Less,
-        witnesses_sorted_unique_same_policy([b, ..rest]),
-      }
-  }
-}
-
-fn witnesses_share_receiver(witnesses: List<oracle_logic.UpdateWitness>) -> Bool {
-  when witnesses is {
-    [] -> True
-    [head, ..tail] ->
-      list.all(
-        tail,
-        fn(other) {
-          and {
-            other.receiver_policy_id == head.receiver_policy_id,
-            other.receiver_asset_name == head.receiver_asset_name,
-          }
-        },
-      )
-  }
-}
-
-
-fn sample_sort_witness(policy_id: ByteArray, token_name: ByteArray) -> oracle_logic.UpdateWitness {
+fn sample_sort_witness(
+  policy_id: ByteArray,
+  token_name: ByteArray,
+) -> oracle_logic.UpdateWitness {
   oracle_logic.UpdateWitness {
     receiver_policy_id: #"22222222222222222222222222222222222222222222222222222222",
     receiver_asset_name: #"4449415f5245434549564552",
@@ -573,31 +722,78 @@ fn sample_sort_witness(policy_id: ByteArray, token_name: ByteArray) -> oracle_lo
   }
 }
 
-test witnesses_sorted_unique_same_policy_accepts_strict_order() {
-  witnesses_sorted_unique_same_policy([
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"01"),
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"02"),
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"03"),
-  ])
+test batch_witness_header_ok_accepts_strict_order_step() {
+  let self =
+    Transaction {
+      ..transaction.placeholder,
+      validity_range: interval.between(0, 1),
+    }
+  batch_witness_header_ok(
+    self,
+    #"11111111111111111111111111111111111111111111111111111111",
+    #"22222222222222222222222222222222222222222222222222222222",
+    #"4449415f5245434549564552",
+    Some(#"01"),
+    sample_sort_witness(
+      #"11111111111111111111111111111111111111111111111111111111",
+      #"02",
+    ),
+  )
 }
 
-test witnesses_sorted_unique_same_policy_rejects_bad_order() {
-  !witnesses_sorted_unique_same_policy([
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"02"),
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"01"),
-  ])
+test batch_witness_header_ok_rejects_bad_order_step() {
+  let self =
+    Transaction {
+      ..transaction.placeholder,
+      validity_range: interval.between(0, 1),
+    }
+  !batch_witness_header_ok(
+    self,
+    #"11111111111111111111111111111111111111111111111111111111",
+    #"22222222222222222222222222222222222222222222222222222222",
+    #"4449415f5245434549564552",
+    Some(#"02"),
+    sample_sort_witness(
+      #"11111111111111111111111111111111111111111111111111111111",
+      #"01",
+    ),
+  )
 }
 
-test witnesses_sorted_unique_same_policy_rejects_mixed_policies() {
-  !witnesses_sorted_unique_same_policy([
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"01"),
-    sample_sort_witness(#"22222222222222222222222222222222222222222222222222222222", #"02"),
-  ])
+test batch_witness_header_ok_rejects_mixed_policy_step() {
+  let self =
+    Transaction {
+      ..transaction.placeholder,
+      validity_range: interval.between(0, 1),
+    }
+  !batch_witness_header_ok(
+    self,
+    #"11111111111111111111111111111111111111111111111111111111",
+    #"22222222222222222222222222222222222222222222222222222222",
+    #"4449415f5245434549564552",
+    Some(#"01"),
+    sample_sort_witness(
+      #"22222222222222222222222222222222222222222222222222222222",
+      #"02",
+    ),
+  )
 }
 
-test witnesses_sorted_unique_same_policy_rejects_duplicates() {
-  !witnesses_sorted_unique_same_policy([
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"01"),
-    sample_sort_witness(#"11111111111111111111111111111111111111111111111111111111", #"01"),
-  ])
+test batch_witness_header_ok_rejects_duplicate_token_step() {
+  let self =
+    Transaction {
+      ..transaction.placeholder,
+      validity_range: interval.between(0, 1),
+    }
+  !batch_witness_header_ok(
+    self,
+    #"11111111111111111111111111111111111111111111111111111111",
+    #"22222222222222222222222222222222222222222222222222222222",
+    #"4449415f5245434549564552",
+    Some(#"01"),
+    sample_sort_witness(
+      #"11111111111111111111111111111111111111111111111111111111",
+      #"01",
+    ),
+  )
 }

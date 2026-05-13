@@ -136,11 +136,7 @@ validator payment_hook(
               own_policy_id,
               expected_asset_name,
             ),
-            coordinator_intent_matches(
-              self,
-              config_datum,
-              IntentForHookSettle,
-            ),
+            coordinator_intent_matches(self, config_datum, IntentForHookSettle),
             // Defense-in-depth: also require an admin signature on
             // the hook spend, in addition to the coordinator witness.
             // Cheap (one tx-wide check) and protects the

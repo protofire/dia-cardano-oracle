@@ -65,10 +65,7 @@ pub fn oracle_intent_hash_with_sep(
   keccak_256(
     bytearray.concat(
       #"1901",
-      bytearray.concat(
-        domain_sep,
-        oracle_intent_struct_hash(intent),
-      ),
+      bytearray.concat(domain_sep, oracle_intent_struct_hash(intent)),
     ),
   )
 }
@@ -108,10 +105,7 @@ pub fn is_fresh_update(previous: PairDatum, intent: OracleIntent) -> Bool {
 /// milliseconds). The off-chain code MUST set a finite upper bound on
 /// every tx that consumes a signed intent — an open-ended upper bound
 /// would leave the intent replayable forever and is rejected here.
-pub fn intent_expiry_satisfied(
-  intent: OracleIntent,
-  tx: Transaction,
-) -> Bool {
+pub fn intent_expiry_satisfied(intent: OracleIntent, tx: Transaction) -> Bool {
   let IntervalBound { bound_type, .. } = tx.validity_range.upper_bound
   when bound_type is {
     Finite(upper_millis) -> intent.expiry * 1000 >= upper_millis
@@ -629,10 +623,7 @@ test tampered_intent_nonce_is_rejected() {
     sample_config(),
     oracle_intent_hash(
       sample_config().domain_data,
-      OracleIntent {
-        ..sample_intent(),
-        nonce: sample_intent().nonce + 1,
-      },
+      OracleIntent { ..sample_intent(), nonce: sample_intent().nonce + 1 },
     ),
     UpdateWitness {
       ..sample_witness(),

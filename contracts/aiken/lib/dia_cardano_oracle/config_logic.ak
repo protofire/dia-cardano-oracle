@@ -92,9 +92,9 @@ pub fn admin_update_transition(previous: ConfigDatum, next: ConfigDatum) -> Bool
   and {
     valid_config_state(previous),
     valid_config_state(next),
-    // min_utxo_lovelace can now be updated via AdminUpdate redeemer
-    // All other fields can be changed by admin
   }
+  // min_utxo_lovelace can now be updated via AdminUpdate redeemer
+  // All other fields can be changed by admin
 }
 
 /// Calculates the total protocol fee for N pairs using the formula:
@@ -107,7 +107,7 @@ pub fn admin_update_transition(previous: ConfigDatum, next: ConfigDatum) -> Bool
 /// # Returns
 /// Total protocol fee in lovelace
 pub fn calculate_protocol_fee(datum: ConfigDatum, pair_count: Int) -> Int {
-  datum.base_fee_lovelace + (pair_count * datum.per_pair_fee_lovelace)
+  datum.base_fee_lovelace + pair_count * datum.per_pair_fee_lovelace
 }
 
 fn unique_authorized_dia_public_keys(keys: List<ByteArray>) -> Bool {
