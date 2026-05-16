@@ -309,13 +309,24 @@ write_manifest() {
   } > "$manifest_path"
 }
 
+# Run `npm run cli -- $@` so the output can be tee'd. On Linux we wrap it in
+# `script` to keep a PTY; on macOS we run it bare (BSD `script` syntax differs
+# and bare invocation is what worked for the macOS contributor).
+pty_exec() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    npm run cli -- $@
+  else
+    script -q -e -c "npm run cli -- $*" /dev/null
+  fi
+}
+
 # run_tx LOG_FILE CLI_ARGS...
 # Runs a CLI command, writes output to LOG_FILE, then waits POST_TX_DELAY_SECONDS.
 # Fails fast on non-zero exit (set -e + pipefail).
 run_tx() {
   local log_file="$1"; shift
   echo "[bench] npm run cli -- $*"
-  script -q -e -c "npm run cli -- $*" /dev/null | tee "$log_file"
+  pty_exec "$@" | tee "$log_file"
   [[ "$POST_TX_DELAY_SECONDS" -gt 0 ]] && sleep "$POST_TX_DELAY_SECONDS"
 }
 
@@ -326,7 +337,7 @@ try_tx() {
   local log_file="$1"; shift
   echo "[bench] [probe] npm run cli -- $*"
   set +e
-  script -q -e -c "npm run cli -- $*" /dev/null | tee "$log_file"
+  pty_exec "$@" | tee "$log_file"
   local rc=${PIPESTATUS[0]}
   set -e
   if [[ "$rc" -eq 0 && "$POST_TX_DELAY_SECONDS" -gt 0 ]]; then

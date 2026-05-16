@@ -289,12 +289,26 @@ should_run_step() {
   (( step >= FROM_STEP ))
 }
 
+# Run `npm run cli -- $cli_cmd` so the output can be tee'd. On Linux we wrap
+# it in `script` to keep a PTY (so the CLI sees a terminal — colors, spinners,
+# TTY-only paths stay intact). On macOS we run it bare: BSD `script` has a
+# different argument syntax and got us into trouble, and bare invocation is
+# what worked reliably for the macOS contributor.
+pty_exec() {
+  local cli_cmd="$*"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    npm run cli -- $cli_cmd
+  else
+    script -q -e -c "npm run cli -- $cli_cmd" /dev/null
+  fi
+}
+
 run_cli_logged() {
   local log_name="$1"
   shift
   local cli_cmd="$*"
   echo "[run] $cli_cmd"
-  script -q -e -c "npm run cli -- $cli_cmd" /dev/null | tee "$EVIDENCE_ROOT/$log_name"
+  pty_exec $cli_cmd | tee "$EVIDENCE_ROOT/$log_name"
 }
 
 append_cli_log() {
@@ -302,7 +316,7 @@ append_cli_log() {
   shift
   local cli_cmd="$*"
   echo "[run] $cli_cmd" | tee -a "$EVIDENCE_ROOT/$log_name"
-  script -q -e -c "npm run cli -- $cli_cmd" /dev/null | tee -a "$EVIDENCE_ROOT/$log_name"
+  pty_exec $cli_cmd | tee -a "$EVIDENCE_ROOT/$log_name"
 }
 
 run_tx_logged() {
@@ -345,7 +359,7 @@ append_tx_log() {
   shift
   local cli_cmd="$*"
   echo "[run] $cli_cmd" | tee -a "$EVIDENCE_ROOT/$log_name"
-  script -q -e -c "npm run cli -- $cli_cmd" /dev/null | tee -a "$EVIDENCE_ROOT/$log_name"
+  pty_exec $cli_cmd | tee -a "$EVIDENCE_ROOT/$log_name"
   if [[ "$POST_TX_DELAY_SECONDS" -gt 0 ]]; then
     sleep "$POST_TX_DELAY_SECONDS"
   fi
