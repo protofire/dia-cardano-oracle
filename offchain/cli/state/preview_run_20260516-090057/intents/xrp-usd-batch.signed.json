@@ -1,0 +1,21 @@
+{
+  "intent": {
+    "intentType": "OracleUpdate",
+    "version": "1.0",
+    "chainId": "100640",
+    "nonce": "1778925090000",
+    "expiry": "1778928690",
+    "symbol": "XRP/USD",
+    "price": "521000000",
+    "timestamp": "1778925090",
+    "source": "DIA Oracle",
+    "signature": "0xdb00f931550579db45faf0a72c25bbed484f6f4fe787d186810704d69f3220db402ee3e4de32648d38d6ca3d3b315e386c3844b4087c3f17cc786edfca5304981c",
+    "signer": "0x2b1c7eff297766569966b630a6862947a8e5285a"
+  },
+  "witness": {
+    "signerPublicKey": "02d78ade9f8a9c064c8c588dba903df0cc0118596b9ec65f665dea1b448519f531",
+    "signerAddress": "0x2b1c7eff297766569966b630a6862947a8e5285a",
+    "intentHash": "f9b6a9d9cbbd814ccd933871d089d706c997b96f6cf1ed560c01a8f69bf74ffc",
+    "compactSignature": "db00f931550579db45faf0a72c25bbed484f6f4fe787d186810704d69f3220db402ee3e4de32648d38d6ca3d3b315e386c3844b4087c3f17cc786edfca530498"
+  }
+}
