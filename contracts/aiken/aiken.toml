@@ -1,4 +1,4 @@
-name = "protofire/dia-cardano-oracle"
+name = "diadata-org/dia-cardano-oracle"
 version = "0.0.0"
 compiler = "v1.1.21"
 plutus = "v3"
@@ -6,7 +6,7 @@ license = "Apache-2.0"
 description = "Aiken contracts for the DIA Cardano Oracle project"
 
 [repository]
-user = "protofire"
+user = "diadata-org"
 project = "dia-cardano-oracle"
 platform = "github"
 

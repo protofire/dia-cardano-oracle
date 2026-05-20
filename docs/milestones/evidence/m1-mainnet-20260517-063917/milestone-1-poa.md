@@ -2,7 +2,7 @@
 
 **Project:** DIA Oracles on Cardano
 **Milestone:** 1 — Port DIA Oracle Smart Contract to Aiken
-**Public repository:** <https://github.com/protofire/dia-cardano-oracle>
+**Public repository:** <https://github.com/diadata-org/dia-cardano-oracle>
 **Submission commit:** `4e54d6b01b9ca09025acf70fc7f83f3db14151b3`
 
 Primary on-chain evidence pack:
@@ -189,7 +189,7 @@ relevant Plutus V3 scripts being exercised on Mainnet.
 ### 4.2. Local repro (Aiken + CLI)
 
 ```bash
-git clone https://github.com/protofire/dia-cardano-oracle.git
+git clone https://github.com/diadata-org/dia-cardano-oracle.git
 cd dia-cardano-oracle
 git checkout 4e54d6b01b9ca09025acf70fc7f83f3db14151b3   # or tag m1-mainnet-poa
 

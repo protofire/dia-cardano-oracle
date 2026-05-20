@@ -1,5 +1,5 @@
 {
-  "name": "@protofire/dia-cardano-oracle-cli",
+  "name": "@diadata-org/dia-cardano-oracle-cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",

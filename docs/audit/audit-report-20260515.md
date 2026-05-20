@@ -1,4 +1,4 @@
-# Final Security and Coherence Audit for protofire/dia-cardano-oracle
+# Final Security and Coherence Audit for diadata-org/dia-cardano-oracle
 
 ## Executive summary
 
