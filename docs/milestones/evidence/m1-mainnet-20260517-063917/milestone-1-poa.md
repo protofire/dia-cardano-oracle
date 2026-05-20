@@ -73,7 +73,7 @@ downstream consumer scripts).
 > contract on mainnet. All transaction hashes must be verifiable via a
 > public Cardano blockchain explorer."*
 
-Headline mainnet transactions a reviewer can click immediately:
+Headline mainnet transactions for immediate verification:
 
 | Role | Operation | Tx hash | Explorer |
 | --- | --- | --- | --- |
@@ -135,7 +135,7 @@ The Catalyst milestone text states that developer documentation is
 DIA main developer documentation website". We are **deferring publication
 on DIA's main developer documentation website to Milestone 4 (End-to-End
 Integration and Deployment on Cardano Mainnet)**, with reasoning recorded
-here so reviewers can evaluate the trade-off:
+with reasoning recorded here for evaluation:
 
 1. **The integration is iterating across M2/M3/M4.** Milestone 2 introduces
    the Cardano-specific data feeder, Milestone 3 the monitoring stack, and
@@ -150,8 +150,7 @@ here so reviewers can evaluate the trade-off:
 3. **GitHub provides equivalent, and arguably stronger, public
    verifiability for review purposes.** All documentation is public,
    versioned per commit, citable by URL, and pinned to the submission
-   commit/tag listed at the top of this PoA. Reviewers can attest a fixed
-   snapshot.
+   commit/tag listed at the top of this PoA. A fixed snapshot can be attested from this documentation.
 4. **The same clause appears in M2, M3, and M4 acceptance criteria.** The
    deferral therefore consolidates documentation publication across the
    project rather than fragmenting it across four milestones, each shipping
@@ -176,13 +175,13 @@ channel that will land at M4 alongside the final integration.
 
 ---
 
-## 4. How a reviewer can verify
+## 4. How to verify this deliverable
 
-A reviewer can independently verify M1 in three ways:
+This deliverable can be independently verified in three ways:
 
 ### 4.1. On-chain (no local setup required)
 
-Click any of the CExplorer links in §AC #2. The Config bootstrap, batch
+Follow any CExplorer link in §AC #2. The Config bootstrap, batch
 update, settle, reclaim, republish, and pair-burn transactions all show the
 relevant Plutus V3 scripts being exercised on Mainnet.
 
@@ -191,7 +190,7 @@ relevant Plutus V3 scripts being exercised on Mainnet.
 ```bash
 git clone https://github.com/diadata-org/dia-cardano-oracle.git
 cd dia-cardano-oracle
-git checkout 4e54d6b01b9ca09025acf70fc7f83f3db14151b3   # or tag m1-mainnet-poa
+git checkout 4e54d6b01b9ca09025acf70fc7f83f3db14151b3
 
 # On-chain (Aiken) — optional, requires Aiken v1.1.21
 ( cd contracts/aiken && aiken check && aiken build )
@@ -201,14 +200,13 @@ git checkout 4e54d6b01b9ca09025acf70fc7f83f3db14151b3   # or tag m1-mainnet-poa
 ```
 
 The committed `contracts/aiken/plutus.json` is the canonical compiled
-artifact the CLI consumes; Aiken is only required if you want to recompile
-from source.
+artifact the CLI consumes; Aiken is only required for recompilation from source.
 
 ### 4.3. Re-walk the chain on Mainnet (optional)
 
 The CLI runbook in [`offchain/cli/README.md`](../../../../offchain/cli/README.md)
-documents every command used in the chain walk. A reviewer with a funded
-wallet and a Blockfrost project id can replay any step. The exact sequence
+documents every command used in the chain walk. Operators with a funded
+wallet and a Blockfrost project id may replay any step. The exact sequence
 performed on Mainnet for this PoA is captured in
 [`milestone-1-mainnet-evidence.md`](./milestone-1-mainnet-evidence.md) and
 [`SUMMARY.json`](./SUMMARY.json).
